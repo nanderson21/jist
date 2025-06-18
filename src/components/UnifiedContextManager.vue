@@ -43,6 +43,13 @@
         
         <div class="flex items-center gap-2">
           <button
+            @click="showTemplateBuilder = true"
+            class="px-3 py-1 text-sm border border-input rounded hover:bg-accent"
+          >
+            📋 Templates
+          </button>
+          
+          <button
             @click="showRuleBuilder = true"
             class="px-3 py-1 text-sm bg-primary text-primary-foreground rounded hover:bg-primary/90"
           >
@@ -65,6 +72,16 @@
           </button>
         </div>
       </div>
+    </div>
+    
+    <!-- Smart Template Detection -->
+    <div v-if="hierarchyNodes.length > 0" class="border-b">
+      <SmartTemplateMatcher
+        :root-path="props.rootNode?.path || 'Project'"
+        :project-structure="hierarchyNodes"
+        @template-applied="handleTemplateApplied"
+        @create-template="showTemplateBuilder = true"
+      />
     </div>
     
     <!-- Main Content Area -->
@@ -250,6 +267,31 @@
       @close="showRuleBuilder = false"
     />
     
+    <!-- Template Builder Modal -->
+    <div
+      v-if="showTemplateBuilder"
+      class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+    >
+      <div class="w-full h-full max-w-7xl max-h-[95vh] bg-background rounded-lg shadow-xl overflow-hidden">
+        <div class="h-full flex flex-col">
+          <div class="p-4 border-b flex items-center justify-between">
+            <h3 class="text-lg font-semibold">Template Builder</h3>
+            <button
+              @click="showTemplateBuilder = false"
+              class="p-2 hover:bg-accent rounded-full"
+            >
+              ✕
+            </button>
+          </div>
+          <div class="flex-1 overflow-hidden">
+            <TemplateBuilder
+              :hierarchy-nodes="hierarchyNodes"
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+    
     <!-- Processing Overlay -->
     <div v-if="isProcessing" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div class="bg-background rounded-lg p-6 max-w-md">
@@ -278,6 +320,8 @@ import { useContextStore } from '@/stores/contextStore'
 import { analyzeFileRelationships, inferContextFromPatterns } from '@/data/redNamingConventions'
 import HierarchyExplorer from './HierarchyExplorer.vue'
 import RuleBuilderModal from './RuleBuilderModal.vue'
+import SmartTemplateMatcher from './SmartTemplateMatcher.vue'
+import TemplateBuilder from './TemplateBuilder.vue'
 
 interface Props {
   files?: FileNode[]
@@ -319,6 +363,7 @@ const {
 const selectedNode = ref<HierarchyNode | null>(null)
 const breadcrumbs = ref<Array<{ name: string; icon: string; path: string; context?: string }>>([])
 const showRuleBuilder = ref(false)
+const showTemplateBuilder = ref(false)
 const isProcessing = ref(false)
 const processingStatus = ref('')
 const processingProgress = ref(0)
@@ -592,6 +637,20 @@ async function handleQuickContextAssign(node: HierarchyNode, categoryId: string,
 async function removeContext(contextId: string) {
   // In a real implementation, we'd have a removeContextMapping method
   contextMappings.value = contextMappings.value.filter(m => m.id !== contextId)
+}
+
+// Template handling
+function handleTemplateApplied(templateId: string, extractedVariables: Record<string, string>) {
+  console.log('Template applied:', { templateId, extractedVariables })
+  
+  // Show success notification
+  processingStatus.value = `Template applied! Extracted variables: ${Object.keys(extractedVariables).join(', ')}`
+  isProcessing.value = true
+  processingProgress.value = 100
+  
+  setTimeout(() => {
+    isProcessing.value = false
+  }, 2000)
 }
 
 // Rule handling
